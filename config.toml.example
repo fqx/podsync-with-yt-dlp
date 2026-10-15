@@ -152,11 +152,17 @@ vimeo = [ # Multiple keys will be rotated.
   description = "News sections of Level1Techs, in a podcast feed!"
   author = "Level1Tech"
   cover_art = "{IMAGE_URL}"
-  # Optional image for every episode's RSS itunes:image; omitted/empty keeps source thumbnails.
+  # RSS item artwork: a fixed public URL, "auto" for square YouTube artwork, or ""/omitted for source thumbnails.
+  # "auto" on non-YouTube feeds keeps source thumbnails; it is never emitted as an image URL.
+  # Auto: 1400×1400 opaque JPEG with Gaussian-blurred source background, darkened by 30%.
+  # Clear foreground: proportional fit, no cropping/stretching or brightness change; cached via existing storage.
+  # Failed auto artwork falls back to the original thumbnail and retries at the next update.
   # Use a publicly accessible square JPG/PNG without transparency or an alpha channel.
   # Apple Podcasts accepts 1400×1400–3000×3000 pixels via RSS; 3000×3000 is preferred.
   # Specs: https://podcasters.apple.com/support/5516-episode-art-template
   # episode_cover_art = "https://example.com/episode-cover.jpg"
+  # Or, instead of the fixed URL:
+  # episode_cover_art = "auto"
   cover_art_quality = "high"
   category = "TV"
   subcategories = ["Documentary", "Tech News"]

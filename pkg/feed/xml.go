@@ -149,7 +149,7 @@ func Build(_ctx context.Context, feed *model.Feed, cfg *Config, hostname string)
 
 		item.AddPubDate(&episode.PubDate)
 		item.AddSummary(episode.Description)
-		if cfg.Custom.EpisodeCoverArt != "" {
+		if cfg.Custom.EpisodeCoverArt != "" && cfg.Custom.EpisodeCoverArt != "auto" {
 			item.AddImage(cfg.Custom.EpisodeCoverArt)
 		} else {
 			item.AddImage(episode.Thumbnail)

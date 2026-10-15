@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/mxpv/podsync/pkg/artwork"
 	"github.com/mxpv/podsync/pkg/builder"
 	"github.com/mxpv/podsync/pkg/db"
 	"github.com/mxpv/podsync/pkg/feed"
@@ -29,12 +30,14 @@ type Downloader interface {
 type TokenList []string
 
 type Manager struct {
-	hostname   string
-	downloader Downloader
-	db         db.Storage
-	fs         fs.Storage
-	feeds      map[string]*feed.Config
-	keys       map[model.Provider]feed.KeyProvider
+	artworkGenerator *artwork.Generator
+	thumbnailLookup  func(context.Context, []string) (map[string][]string, error)
+	hostname         string
+	downloader       Downloader
+	db               db.Storage
+	fs               fs.Storage
+	feeds            map[string]*feed.Config
+	keys             map[model.Provider]feed.KeyProvider
 }
 
 func NewUpdater(
@@ -330,6 +333,8 @@ func (u *Manager) buildXML(ctx context.Context, feedConfig *feed.Config) error {
 	if err != nil {
 		return err
 	}
+
+	u.prepareEpisodeArtwork(ctx, f, feedConfig)
 
 	// Build iTunes XML feed with data received from builder
 	log.Debug("building iTunes podcast feed")

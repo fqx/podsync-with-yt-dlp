@@ -82,7 +82,7 @@ type Filters struct {
 }
 
 type Custom struct {
-	// EpisodeCoverArt overrides the image of every RSS item; empty keeps the source thumbnail.
+	// EpisodeCoverArt is a fixed item image URL, "auto" for square YouTube artwork, or empty for source thumbnails.
 	EpisodeCoverArt string        `toml:"episode_cover_art"`
 	CoverArt        string        `toml:"cover_art"`
 	CoverArtQuality model.Quality `toml:"cover_art_quality"`

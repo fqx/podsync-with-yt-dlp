@@ -531,3 +531,17 @@ url = "https://youtube.com/watch?v=ygIUF678y40"
 		})
 	}
 }
+
+func TestEpisodeCoverArtAutoConfig(t *testing.T) {
+	path := setup(t, `[server]
+data_dir="test/data/"
+[feeds.A]
+url="https://youtube.com/watch?v=ygIUF678y40"
+[feeds.A.custom]
+episode_cover_art="auto"
+`)
+	defer os.Remove(path)
+	config, err := LoadConfig(path)
+	require.NoError(t, err)
+	assert.Equal(t, "auto", config.Feeds["A"].Custom.EpisodeCoverArt)
+}

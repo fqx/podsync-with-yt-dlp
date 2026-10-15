@@ -169,7 +169,7 @@ description = "Custom description"
 author = "Author Name"
 link = "https://example.com"
 cover_art = "https://example.com/image.jpg"
-episode_cover_art = "https://example.com/episode.jpg" # Optional: all RSS item images; empty keeps source thumbnails
+episode_cover_art = "auto"             # YouTube square artwork, a fixed public image URL, or empty for source thumbnails
 cover_art_quality = "high"             # "high" or "low"
 category = "Technology"
 subcategories = ["Software How-To"]
@@ -178,6 +178,26 @@ lang = "en"
 ownerName = "Owner"
 ownerEmail = "owner@example.com"
 ```
+
+### Episode Artwork
+
+`custom.episode_cover_art`: a URL overrides all RSS item images; `"auto"` generates
+1400×1400 opaque JPEG with blurred source background artwork only for YouTube feeds; empty or non-YouTube
+`"auto"` keeps original thumbnails. Auto runs in `services/update/artwork.go`
+before RSS generation for all downloaded episodes, including old database records.
+`pkg/builder/youtube_artwork.go` fetches current video thumbnail metadata in batches
+of 50 and orders actual URLs by resolution. `pkg/artwork` bounds HTTP requests,
+redirect destinations, bytes and decoded pixels, then proportionally fits the full
+foreground without cropping or stretching over a stretched, Gaussian-blurred
+copy of the source. Blur uses a 280×280 working image with clamped edges to avoid
+black borders. A 30% black overlay shades only the background before the unchanged
+foreground is composited. Fixed URL mode never runs automatic work.
+Cached `.jpg` plus `.ready` completion markers live under
+`artwork/square-blur-dark30-v1/<feed-hash>/<episode-hash>.jpg` in existing storage; RSS uses the
+same hostname base as media. S3 needs external public serving, as for media.
+Failures warn and fall back without failing RSS; original database metadata remains
+unchanged. Cache persists until explicitly removed, even after disabling the mode
+or cleaning episodes. See README for limits, cache invalidation and Apple specs.
 
 ### Hooks Configuration
 ```toml

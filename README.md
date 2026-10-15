@@ -118,28 +118,81 @@ Podsync supports the following environment variables for configuration and API k
 
 ### Custom episode artwork
 
-`custom.cover_art` changes the channel artwork. To use one image for every episode
-in a feed, add `episode_cover_art` to that feed's existing custom section:
+`custom.cover_art` changes the channel artwork. `custom.episode_cover_art` controls
+RSS item artwork and accepts one of these values:
+
+| Value | Behavior |
+| --- | --- |
+| A public image URL | Use that fixed image for every episode, on any provider. |
+| `"auto"` | For YouTube feeds, generate a square image from each video's highest available thumbnail. Other providers keep their original thumbnails. |
+| `""` or omitted | Keep the original source thumbnails. |
+
+Fixed image example:
 
 ```toml
 [feeds.example.custom]
 episode_cover_art = "https://example.com/cover.jpg"
 ```
 
-Replace the example URL with your own publicly accessible square JPG or PNG image.
+Automatic YouTube artwork (use this instead of the URL in the same section):
+
+```toml
+[feeds.example.custom]
+episode_cover_art = "auto"
+```
+
+For fixed images, use your own publicly accessible square JPG or PNG image.
 [Apple Podcasts accepts episode artwork submitted via RSS from 1400 × 1400 to
 3000 × 3000 pixels, and prefers the largest size (3000 × 3000)](https://podcasters.apple.com/support/5516-episode-art-template).
 The image must have a solid background without transparency or an alpha channel.
-This setting overrides each RSS item's
-`itunes:image`; omit it or set it to `""` to keep the original source thumbnail.
-The channel artwork remains controlled by `cover_art`.
+
+Automatic mode uses the existing YouTube API key to query current video metadata
+for downloaded episodes that have no completed cached artwork, including old
+episodes absent from the current playlist page. It ranks the thumbnail URLs
+actually returned by YouTube by resolution (including `standard` and `maxres`
+when available), independently of video download quality, and tries the next
+candidate if a fetch or decode fails. It never guesses a `maxres` URL.
+The full image is resized proportionally to fit a **1400 × 1400 opaque
+canvas**, centered without cropping or stretching, then saved as JPEG. Behind the clear
+foreground, the same source is stretched to fill the square and Gaussian blurred
+using a bounded 280 × 280 working image (effective sigma 40 canvas pixels).
+A 30% black overlay darkens only the background before the clear foreground is
+added; foreground brightness is unchanged. This is a design choice, not an Apple
+requirement. Clamped edges avoid dark blur borders. Landscape images show the blurred background
+above and below; portrait images show it at the sides. Transparent input is
+composited onto an opaque background. This meets Apple's RSS size minimum; enlarging a
+small source does not add detail, and 3000 × 3000 remains Apple's preferred size.
+
+Example generated from a synthetic 16:9 image; the border and edge labels remain
+fully visible in the clear foreground:
+
+![Automatic episode artwork with blurred background](docs/img/episode-artwork-example.jpg)
+
+Images are saved through the configured storage under
+`artwork/square-blur-dark30-v1/<feed-hash>/<episode-hash>.jpg`. RSS URLs use the configured
+`server.hostname` base, just like media URLs. Local storage is served by Podsync's
+existing file server; with S3, your external public host must also serve these
+objects under that base URL and storage prefix. Successful images have a `.ready`
+completion marker. Subsequent updates reuse them without another metadata or image
+request. To refresh changed source artwork, remove its cached `.jpg` or `.ready`
+object and allow another update. Cached objects remain when the option is disabled
+or episodes are cleaned; remove unused artwork objects manually when appropriate.
+
+Metadata, image, or storage failures log a warning and leave that episode's source
+thumbnail in RSS; they do not fail the feed update. Missing artwork is retried at
+the next successful feed update. Metadata lookup has a 30-second deadline; image
+requests have a 10-second timeout and a 20-second deadline across candidates per
+episode. Inputs are limited to 8 MiB, 16 million decoded pixels and 8192 pixels per
+side, accepting JPEG/PNG only. Fetches and redirects are restricted to HTTPS
+YouTube image hosts. No additional image tools or dependencies are required.
 
 Build this branch with `make build` and run `bin/podsync --config config.toml`
 with your existing configuration. Restart Podsync after editing the config, then
 allow a successful scheduled feed update to regenerate the XML. Feeds using
 `cron_schedule` wait for their next scheduled run. Existing downloaded episodes
 receive the artwork too; no media download or database migration is required.
-Episode GUIDs, source video URLs, and enclosure URLs are unchanged by this setting.
+Removing the setting restores source thumbnails on the next RSS build. Episode
+GUIDs, source video URLs, and enclosure URLs are unchanged by this setting.
 
 Podcast clients may cache artwork and take time to show an update. Apple Podcasts
 may use different artwork in different views; this setting does not guarantee

@@ -122,7 +122,7 @@ func TestEpisodeNameWithCustomExtensionNormalization(t *testing.T) {
 }
 
 func TestBuildXMLEpisodeCoverArt(t *testing.T) {
-	for _, cover := range []string{"", "https://example.com/cover.jpg?size=1400&v=2"} {
+	for _, cover := range []string{"", "auto", "https://example.com/cover.jpg?size=1400&v=2"} {
 		t.Run(cover, func(t *testing.T) {
 			f := model.Feed{
 				CoverArt: "https://example.com/source-show.jpg",
@@ -158,7 +158,7 @@ func TestBuildXMLEpisodeCoverArt(t *testing.T) {
 			require.Len(t, rss.Channel.Items, 2)
 			for _, item := range rss.Channel.Items {
 				want := cover
-				if want == "" {
+				if want == "" || want == "auto" {
 					want = "https://example.com/" + item.GUID + ".jpg"
 				}
 				assert.Equal(t, want, item.Image.Href)

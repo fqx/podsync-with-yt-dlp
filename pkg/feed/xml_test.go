@@ -2,6 +2,7 @@ package feed
 
 import (
 	"context"
+	"encoding/xml"
 	"testing"
 	"time"
 
@@ -118,4 +119,56 @@ func TestEpisodeNameWithCustomExtensionNormalization(t *testing.T) {
 
 	cfg.CustomFormat.Extension = "../bad"
 	assert.Equal(t, "abc123.mp4", EpisodeName(cfg, episode))
+}
+
+func TestBuildXMLEpisodeCoverArt(t *testing.T) {
+	for _, cover := range []string{"", "https://example.com/cover.jpg?size=1400&v=2"} {
+		t.Run(cover, func(t *testing.T) {
+			f := model.Feed{
+				CoverArt: "https://example.com/source-show.jpg",
+				Episodes: []*model.Episode{
+					{ID: "one", Title: "One", Status: model.EpisodeDownloaded, Thumbnail: "https://example.com/one.jpg", VideoURL: "https://youtube.com/watch?v=one"},
+					{ID: "two", Title: "Two", Status: model.EpisodeDownloaded, Thumbnail: "https://example.com/two.jpg"},
+					{ID: "pending", Status: model.EpisodeNew},
+				},
+			}
+			cfg := Config{ID: "test", Custom: Custom{CoverArt: "https://example.com/show.jpg", EpisodeCoverArt: cover}}
+			out, err := Build(context.Background(), &f, &cfg, "https://podcast.example.com")
+			require.NoError(t, err)
+			var rss struct {
+				Channel struct {
+					Image struct {
+						Href string `xml:"href,attr"`
+					} `xml:"http://www.itunes.com/dtds/podcast-1.0.dtd image"`
+					Items []struct {
+						GUID  string `xml:"guid"`
+						Link  string `xml:"link"`
+						Image struct {
+							Href string `xml:"href,attr"`
+						} `xml:"http://www.itunes.com/dtds/podcast-1.0.dtd image"`
+						Enclosure struct {
+							URL  string `xml:"url,attr"`
+							Type string `xml:"type,attr"`
+						} `xml:"enclosure"`
+					} `xml:"item"`
+				} `xml:"channel"`
+			}
+			require.NoError(t, xml.Unmarshal([]byte(out.String()), &rss))
+			assert.Equal(t, cfg.Custom.CoverArt, rss.Channel.Image.Href)
+			require.Len(t, rss.Channel.Items, 2)
+			for _, item := range rss.Channel.Items {
+				want := cover
+				if want == "" {
+					want = "https://example.com/" + item.GUID + ".jpg"
+				}
+				assert.Equal(t, want, item.Image.Href)
+				assert.Equal(t, "https://podcast.example.com/test/"+item.GUID+".mp4", item.Enclosure.URL)
+				assert.Equal(t, "video/mp4", item.Enclosure.Type)
+				if item.GUID == "one" {
+					assert.Equal(t, "https://youtube.com/watch?v=one", item.Link)
+				}
+			}
+			assert.Equal(t, "https://example.com/one.jpg", f.Episodes[0].Thumbnail)
+		})
+	}
 }

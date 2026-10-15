@@ -152,6 +152,9 @@ vimeo = [ # Multiple keys will be rotated.
   description = "News sections of Level1Techs, in a podcast feed!"
   author = "Level1Tech"
   cover_art = "{IMAGE_URL}"
+  # Optional image for every episode's RSS itunes:image; omitted/empty keeps source thumbnails.
+  # Use a publicly accessible square JPG/PNG, preferably 1400–3000 pixels per side.
+  # episode_cover_art = "https://example.com/episode-cover.jpg"
   cover_art_quality = "high"
   category = "TV"
   subcategories = ["Documentary", "Tech News"]

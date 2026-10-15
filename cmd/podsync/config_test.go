@@ -46,6 +46,7 @@ timeout = 15
   clean = { keep_last = 10 }
   [feeds.XYZ.custom]
   cover_art = "http://img"
+  episode_cover_art = "https://example.com/episode.jpg"
   cover_art_quality = "high"
   category = "TV"
   subcategories = ["1", "2"]
@@ -92,6 +93,7 @@ timeout = 15
 	assert.EqualValues(t, model.SortingDesc, feed.PlaylistSort)
 
 	assert.EqualValues(t, "http://img", feed.Custom.CoverArt)
+	assert.Equal(t, "https://example.com/episode.jpg", feed.Custom.EpisodeCoverArt)
 	assert.EqualValues(t, "high", feed.Custom.CoverArtQuality)
 	assert.EqualValues(t, "TV", feed.Custom.Category)
 	assert.True(t, feed.Custom.Explicit)
@@ -512,4 +514,20 @@ func setup(t *testing.T, file string) string {
 	require.NoError(t, err)
 
 	return f.Name()
+}
+
+func TestEpisodeCoverArtDefault(t *testing.T) {
+	for _, custom := range []string{"", "[feeds.A.custom]\ncover_art = \"https://example.com/show.jpg\""} {
+		t.Run(custom, func(t *testing.T) {
+			path := setup(t, `[server]
+data_dir = "test/data/"
+[feeds.A]
+url = "https://youtube.com/watch?v=ygIUF678y40"
+`+custom)
+			defer os.Remove(path)
+			config, err := LoadConfig(path)
+			require.NoError(t, err)
+			assert.Empty(t, config.Feeds["A"].Custom.EpisodeCoverArt)
+		})
+	}
 }

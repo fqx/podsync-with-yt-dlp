@@ -169,6 +169,7 @@ description = "Custom description"
 author = "Author Name"
 link = "https://example.com"
 cover_art = "https://example.com/image.jpg"
+episode_cover_art = "https://example.com/episode.jpg" # Optional: all RSS item images; empty keeps source thumbnails
 cover_art_quality = "high"             # "high" or "low"
 category = "Technology"
 subcategories = ["Software How-To"]

@@ -149,7 +149,11 @@ func Build(_ctx context.Context, feed *model.Feed, cfg *Config, hostname string)
 
 		item.AddPubDate(&episode.PubDate)
 		item.AddSummary(episode.Description)
-		item.AddImage(episode.Thumbnail)
+		if cfg.Custom.EpisodeCoverArt != "" {
+			item.AddImage(cfg.Custom.EpisodeCoverArt)
+		} else {
+			item.AddImage(episode.Thumbnail)
+		}
 		item.AddDuration(episode.Duration)
 
 		enclosureType := itunes.MP4

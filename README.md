@@ -116,6 +116,32 @@ Podsync supports the following environment variables for configuration and API k
 | `PODSYNC_SOUNDCLOUD_API_KEY` | SoundCloud API key(s), space-separated for rotation                                       | `soundcloud_key1 soundcloud_key2`             |
 | `PODSYNC_TWITCH_API_KEY`     | Twitch API credentials in the format `CLIENT_ID:CLIENT_SECRET`, space-separated for multi | `id1:secret1 id2:secret2`                     |
 
+### Custom episode artwork
+
+`custom.cover_art` changes the channel artwork. To use one image for every episode
+in a feed, add `episode_cover_art` to that feed's existing custom section:
+
+```toml
+[feeds.example.custom]
+episode_cover_art = "https://example.com/cover.jpg"
+```
+
+Replace the example URL with your own publicly accessible square JPG or PNG image,
+preferably 1400–3000 pixels on each side. This setting overrides each RSS item's
+`itunes:image`; omit it or set it to `""` to keep the original source thumbnail.
+The channel artwork remains controlled by `cover_art`.
+
+Build this branch with `make build` and run `bin/podsync --config config.toml`
+with your existing configuration. Restart Podsync after editing the config, then
+allow a successful scheduled feed update to regenerate the XML. Feeds using
+`cron_schedule` wait for their next scheduled run. Existing downloaded episodes
+receive the artwork too; no media download or database migration is required.
+Episode GUIDs, source video URLs, and enclosure URLs are unchanged by this setting.
+
+Podcast clients may cache artwork and take time to show an update. Apple Podcasts
+may use different artwork in different views; this setting does not guarantee
+that every view will display the episode image.
+
 ## 🚀 How to run
 
 

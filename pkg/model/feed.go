@@ -30,6 +30,9 @@ const (
 )
 
 type Episode struct {
+	// MediaFilename is a validated, storage-resolved name used only while building RSS.
+	// It is not persisted and does not change the episode ID or GUID.
+	MediaFilename string `json:"-"`
 	// ID of episode
 	ID          string        `json:"id"`
 	Title       string        `json:"title"`

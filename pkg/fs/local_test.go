@@ -165,3 +165,27 @@ func TestLocalWalkPrefixAndSymlinks(t *testing.T) {
 	}
 	assert.Error(t, storage.Walk(testCtx, "../outside", func(string) error { return nil }))
 }
+
+func TestLocalLinkMediaSafetyAndConflicts(t *testing.T) {
+	root := t.TempDir()
+	local, err := NewLocal(root, false, false)
+	assert.NoError(t, err)
+	_, err = local.Create(testCtx, "example/old.mp4", bytes.NewBufferString("video"))
+	assert.NoError(t, err)
+	assert.NoError(t, local.LinkMedia(testCtx, "example/old.mp4", "example/new.mp4"))
+	assert.NoError(t, local.LinkMedia(testCtx, "example/old.mp4", "example/new.mp4"))
+	_, err = local.Create(testCtx, "example/conflict.mp4", bytes.NewBufferString("different"))
+	assert.NoError(t, err)
+	assert.Error(t, local.LinkMedia(testCtx, "example/old.mp4", "example/conflict.mp4"))
+	contents, err := os.ReadFile(filepath.Join(root, "example/conflict.mp4"))
+	assert.NoError(t, err)
+	assert.Equal(t, "different", string(contents))
+	assert.Error(t, local.LinkMedia(testCtx, "../outside.mp4", "example/new.mp4"))
+	assert.Error(t, local.LinkMedia(testCtx, "example/old.mp4", "../outside.mp4"))
+	outside := t.TempDir()
+	assert.NoError(t, os.WriteFile(filepath.Join(outside, "video.mp4"), []byte("outside"), 0600))
+	assert.NoError(t, os.Symlink(filepath.Join(outside, "video.mp4"), filepath.Join(root, "example/symlink.mp4")))
+	assert.Error(t, local.LinkMedia(testCtx, "example/symlink.mp4", "example/unsafe.mp4"))
+	assert.NoError(t, os.Symlink(outside, filepath.Join(root, "escape")))
+	assert.Error(t, local.LinkMedia(testCtx, "escape/video.mp4", "escape/new.mp4"))
+}

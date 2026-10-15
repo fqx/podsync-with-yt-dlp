@@ -151,3 +151,40 @@ func (l *Local) Walk(ctx context.Context, prefix string, visit func(string) erro
 		return visit(filepath.ToSlash(relative))
 	})
 }
+
+// LinkMedia preserves the old URL and atomically adds the canonical name. Both
+// names must be in the same directory; rooted operations cannot escape storage.
+func (l *Local) LinkMedia(ctx context.Context, source, target string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if !filepath.IsLocal(source) || !filepath.IsLocal(target) || filepath.Dir(source) != filepath.Dir(target) {
+		return fmt.Errorf("invalid media link paths")
+	}
+	root, err := os.OpenRoot(l.rootDir)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	directory, err := root.OpenRoot(filepath.Dir(source))
+	if err != nil {
+		return err
+	}
+	defer directory.Close()
+	sourceName, targetName := filepath.Base(source), filepath.Base(target)
+	info, err := directory.Lstat(sourceName)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("media link source is not a regular file")
+	}
+	err = directory.Link(sourceName, targetName)
+	if errors.Is(err, os.ErrExist) {
+		destination, statErr := directory.Lstat(targetName)
+		if statErr == nil && destination.Mode().IsRegular() && os.SameFile(info, destination) {
+			return nil
+		}
+	}
+	return err
+}

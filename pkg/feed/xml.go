@@ -21,6 +21,8 @@ type timeSlice []*model.Episode
 const defaultFilenameTemplate = "{{id}}"
 
 var (
+	safeEpisodeIDPattern               = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+	idOnlyTemplatePattern              = regexp.MustCompile(`^{{\s*id\s*}}$`)
 	filenameTemplateTokenPattern       = regexp.MustCompile(`{{\s*([a-z_]+)\s*}}`)
 	filenameTemplatePlaceholderPattern = regexp.MustCompile(`{{\s*([^{}]*)\s*}}`)
 	filenameTemplateTokenNamePattern   = regexp.MustCompile(`^[a-z_]+$`)
@@ -122,7 +124,11 @@ func Build(_ctx context.Context, feed *model.Feed, cfg *Config, hostname string)
 		p.Language = cfg.Custom.Language
 	}
 
+	// Resolve filenames before filling display dates: a missing publication date
+	// must not change the already downloaded/resolved {{pub_date}} storage path.
+	episodeNames := make(map[*model.Episode]string, len(feed.Episodes))
 	for _, episode := range feed.Episodes {
+		episodeNames[episode] = EpisodeName(cfg, episode)
 		if episode.PubDate.IsZero() {
 			episode.PubDate = now
 		}
@@ -165,7 +171,7 @@ func Build(_ctx context.Context, feed *model.Feed, cfg *Config, hostname string)
 		}
 
 		var (
-			episodeName = EpisodeName(cfg, episode)
+			episodeName = episodeNames[episode]
 			downloadURL = fmt.Sprintf("%s/%s/%s", strings.TrimRight(hostname, "/"), cfg.ID, episodeName)
 		)
 
@@ -191,7 +197,45 @@ func Build(_ctx context.Context, feed *model.Feed, cfg *Config, hostname string)
 }
 
 func EpisodeName(feedConfig *Config, episode *model.Episode) string {
-	return fmt.Sprintf("%s.%s", EpisodeBaseName(feedConfig, episode), episodeExtension(feedConfig))
+	candidates := EpisodeNameCandidates(feedConfig, episode)
+	for _, name := range candidates {
+		if episode.MediaFilename == name {
+			return name
+		}
+	}
+	return candidates[0]
+}
+
+// EpisodeNameCandidates lists the configured name, the original safe ID, and
+// the historical trimmed ID name, without duplicates or unsafe legacy paths.
+func EpisodeNameCandidates(cfg *Config, episode *model.Episode) []string {
+	canonical := fmt.Sprintf("%s.%s", EpisodeBaseName(cfg, episode), episodeExtension(cfg))
+	names := []string{canonical}
+	if safeEpisodeIDPattern.MatchString(episode.ID) {
+		old := sanitizeFilename(episode.ID)
+		if old == "" {
+			old = "episode"
+		}
+		for _, base := range []string{episode.ID, old} {
+			name := fmt.Sprintf("%s.%s", base, episodeExtension(cfg))
+			duplicate := false
+			for _, previous := range names {
+				if name == previous {
+					duplicate = true
+					break
+				}
+			}
+			if !duplicate {
+				names = append(names, name)
+			}
+		}
+	}
+	return names
+}
+
+func usesIDFilename(cfg *Config) bool {
+	template := strings.TrimSpace(cfg.FilenameTemplate)
+	return template == "" || idOnlyTemplatePattern.MatchString(template)
 }
 
 func LegacyEpisodeName(feedConfig *Config, episode *model.Episode) string {
@@ -222,6 +266,9 @@ func EnclosureFromExtension(feedConfig *Config) itunes.EnclosureType {
 }
 
 func EpisodeBaseName(feedConfig *Config, episode *model.Episode) string {
+	if usesIDFilename(feedConfig) && safeEpisodeIDPattern.MatchString(episode.ID) {
+		return episode.ID
+	}
 	template := strings.TrimSpace(feedConfig.FilenameTemplate)
 	if template == "" {
 		template = defaultFilenameTemplate

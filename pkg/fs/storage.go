@@ -34,3 +34,9 @@ type Config struct {
 type Walker interface {
 	Walk(ctx context.Context, prefix string, visit func(name string) error) error
 }
+
+// MediaLinker optionally adds a second name for existing media without copying
+// bytes or replacing a destination. Storage without this capability uses the old URL.
+type MediaLinker interface {
+	LinkMedia(ctx context.Context, source, target string) error
+}

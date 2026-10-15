@@ -167,13 +167,29 @@ func (u *Manager) fetchEpisodes(ctx context.Context, feedConfig *feed.Config) ([
 		pageSize     = feedConfig.PageSize
 	)
 
+	stored, err := u.db.GetFeed(ctx, feedID)
+	if err != nil {
+		return nil, err
+	}
+	claims := claimMedia(feedConfig, stored.Episodes)
+
 	log.WithField("page_size", pageSize).Info("fetching episodes for download")
 
 	// Build the list of files to download
-	err := u.db.WalkEpisodes(ctx, feedID, func(episode *model.Episode) error {
+	err = u.db.WalkEpisodes(ctx, feedID, func(episode *model.Episode) error {
 		var (
 			logger = log.WithFields(log.Fields{"episode_id": episode.ID})
 		)
+		if episode.Status == model.EpisodeDownloaded && len(feed.EpisodeNameCandidates(feedConfig, episode)) > 1 {
+			if _, _, err := u.resolveMedia(ctx, feedConfig, episode, claims); errors.Is(err, os.ErrNotExist) {
+				if err := u.db.UpdateEpisode(feedID, episode.ID, func(stored *model.Episode) error { stored.Status = model.EpisodeNew; return nil }); err != nil {
+					return err
+				}
+				episode.Status = model.EpisodeNew
+			} else if err != nil {
+				return err
+			}
+		}
 		if episode.Status != model.EpisodeNew && episode.Status != model.EpisodeError {
 			// File already downloaded
 			logger.Infof("skipping due to already downloaded")
@@ -216,16 +232,26 @@ func (u *Manager) downloadEpisodes(ctx context.Context, feedConfig *feed.Config,
 		return nil
 	}
 
+	stored, err := u.db.GetFeed(ctx, feedID)
+	if err != nil {
+		return err
+	}
+	claims := claimMedia(feedConfig, stored.Episodes)
+
 	// Download pending episodes
 
 	for idx, episode := range downloadList {
 		var (
-			logger      = log.WithFields(log.Fields{"index": idx, "episode_id": episode.ID})
-			episodeName = feed.EpisodeName(feedConfig, episode)
+			logger = log.WithFields(log.Fields{"index": idx, "episode_id": episode.ID})
 		)
 
+		episodeName, err := mediaDestination(feedConfig, episode, claims)
+		if err != nil {
+			return err
+		}
+
 		// Check whether episode already exists
-		size, err := u.fs.Size(ctx, fmt.Sprintf("%s/%s", feedID, episodeName))
+		_, size, err := u.resolveMedia(ctx, feedConfig, episode, claims)
 		if err == nil {
 			logger.Infof("episode %q already exists on disk", episode.ID)
 
@@ -338,6 +364,22 @@ func (u *Manager) buildXML(ctx context.Context, feedConfig *feed.Config) error {
 		return err
 	}
 
+	claims := claimMedia(feedConfig, f.Episodes)
+	for _, episode := range f.Episodes {
+		if episode.Status != model.EpisodeDownloaded || len(feed.EpisodeNameCandidates(feedConfig, episode)) == 1 {
+			continue
+		}
+		name, _, err := u.resolveMedia(ctx, feedConfig, episode, claims)
+		if err == nil {
+			episode.MediaFilename = name
+		} else if errors.Is(err, os.ErrNotExist) {
+			// Do not publish an enclosure that has no media, even on direct RSS refresh.
+			episode.Status = model.EpisodeNew
+		} else {
+			return errors.Wrap(err, "could not resolve compatible media filename")
+		}
+	}
+
 	u.prepareEpisodeArtwork(ctx, f, feedConfig)
 
 	// Build iTunes XML feed with data received from builder
@@ -390,6 +432,7 @@ func (u *Manager) cleanup(ctx context.Context, feedConfig *feed.Config) error {
 		feedID = feedConfig.ID
 		logger = log.WithField("feed_id", feedID)
 		list   []*model.Episode
+		other  []*model.Episode
 		result *multierror.Error
 	)
 
@@ -408,6 +451,8 @@ func (u *Manager) cleanup(ctx context.Context, feedConfig *feed.Config) error {
 	if err := u.db.WalkEpisodes(ctx, feedConfig.ID, func(episode *model.Episode) error {
 		if episode.Status == model.EpisodeDownloaded {
 			list = append(list, episode)
+		} else if episode.Status != model.EpisodeCleaned {
+			other = append(other, episode)
 		}
 		return nil
 	}); err != nil {
@@ -422,23 +467,13 @@ func (u *Manager) cleanup(ctx context.Context, feedConfig *feed.Config) error {
 		return list[i].PubDate.After(list[j].PubDate)
 	})
 
+	protected := claimMedia(feedConfig, append(other, list[:count]...))
 	for _, episode := range list[count:] {
 		logger.WithField("episode_id", episode.ID).Infof("deleting %q", episode.Title)
 
-		var (
-			episodeName = feed.EpisodeName(feedConfig, episode)
-			path        = fmt.Sprintf("%s/%s", feedConfig.ID, episodeName)
-		)
-
-		err := u.fs.Delete(ctx, path)
-		if err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				logger.WithError(err).Errorf("failed to delete episode file: %s", episode.ID)
-				result = multierror.Append(result, errors.Wrapf(err, "failed to delete episode: %s", episode.ID))
-				continue
-			}
-
-			logger.WithField("episode_id", episode.ID).Info("episode was not found - file does not exist")
+		if err := u.deleteMedia(ctx, feedConfig, episode, protected); err != nil {
+			result = multierror.Append(result, errors.Wrapf(err, "failed to delete episode: %s", episode.ID))
+			continue
 		}
 
 		if err := u.db.UpdateEpisode(feedID, episode.ID, func(episode *model.Episode) error {

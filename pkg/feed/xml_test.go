@@ -172,3 +172,34 @@ func TestBuildXMLEpisodeCoverArt(t *testing.T) {
 		})
 	}
 }
+
+func TestIDFilenamesPreserveEdgeCharacters(t *testing.T) {
+	for _, template := range []string{"", "{{id}}", " {{ id }} "} {
+		cfg := &Config{Format: model.FormatVideo, FilenameTemplate: template}
+		for _, id := range []string{"-synthetic-", "synthetic--", "--synthetic", "_synthetic_", "synthetic"} {
+			ep := &model.Episode{ID: id}
+			assert.Equal(t, id+".mp4", EpisodeName(cfg, ep))
+			assert.Equal(t, id+".mp4", LegacyEpisodeName(cfg, ep))
+			names := EpisodeNameCandidates(cfg, ep)
+			assert.Equal(t, id+".mp4", names[0])
+			ep.MediaFilename = "../../outside.mp4"
+			assert.Equal(t, id+".mp4", EpisodeName(cfg, ep))
+			ep.MediaFilename = names[len(names)-1]
+			assert.Equal(t, names[len(names)-1], EpisodeName(cfg, ep))
+		}
+	}
+	cfg := &Config{Format: model.FormatVideo, FilenameTemplate: "{{title}}-{{id}}"}
+	ep := &model.Episode{ID: "-synthetic-", Title: "../Title"}
+	assert.Equal(t, "Title--synthetic.mp4", EpisodeName(cfg, ep))
+	assert.Equal(t, []string{"Title--synthetic.mp4", "-synthetic-.mp4", "synthetic.mp4"}, EpisodeNameCandidates(cfg, ep))
+	for _, id := range []string{"../../escape", " /unsafe ", ".", "..", "?query#fragment"} {
+		cfg.FilenameTemplate = ""
+		ep.ID = id
+		for _, name := range EpisodeNameCandidates(cfg, ep) {
+			assert.NotContains(t, name, "/")
+			assert.NotContains(t, name, "\\")
+			assert.NotContains(t, name, "?")
+			assert.NotContains(t, name, "#")
+		}
+	}
+}

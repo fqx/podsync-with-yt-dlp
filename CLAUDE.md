@@ -335,14 +335,19 @@ debug = false
 ### S3 Storage
 - Files stored with key: `{prefix}/{feed_id}/{episode_name}`
 - **Cannot serve files via Podsync** - content must be hosted externally
-- **Filename migration not supported** (except dry-run)
+- **Explicit filename migration CLI supports dry-run only**; ordinary updates can reuse known existing media names without copying
 - Web UI not available
 
 ### Filename Generation
 - Template tokens: `{{id}}`, `{{title}}`, `{{pub_date}}` (YYYY-MM-DD), `{{feed_id}}`
-- Default template: `{{id}}` if not configured
-- Sanitization removes invalid characters, normalizes whitespace
-- `--migrate-filenames` CLI flag renames existing files to match current template
+- Default template: `{{id}}` if not configured; safe IDs preserve edge `-` and `_`
+- Automatic compatibility recognizes the current template, original safe ID and beta.3 trimmed ID names. It supports original-ID files to custom templates and trimmed-ID files to repaired defaults
+- Local storage adds atomic hard links without replacing files or copying media; old URLs remain. S3 and failed/unsupported hard links use the existing URL
+- Claims across database episodes (including cleaned history) reject ambiguous aliases and template collisions. Original ID paths outrank weak trimmed aliases; conflicting custom names fall back to an unambiguous ID path. If no safe name exists, updates fail without overwriting media
+- Missing media is requeued; RSS omits missing affected items. Resolve names before populating missing RSS dates so {{pub_date}} cannot change a resolved storage path
+- `keep_last` checks all recognized names and protects retained/pending claims; artwork liveness checks the same candidates
+- Custom templates retain sanitization. Historical arbitrary custom names and prior extensions are not automatically recovered; assume one writer
+- The existing `--migrate-filenames` CLI copies original-ID legacy files then deletes the source. It does not provide the new automatic compatibility checks or preserve source URLs; prefer automatic updates for the supported cases
 
 ## Error Handling
 
@@ -521,7 +526,7 @@ This project uses golangci-lint with strict formatting rules configured in `.gol
 
 ## Fork beta releases
 
-Tag this fork with `v2.8.1-beta.3` to trigger `.github/workflows/release.yml`.
+Tag this fork with `v2.8.1-beta.4` to trigger `.github/workflows/release.yml`.
 It tests first, publishes the existing supported OS/CPU archive matrix through
 GoReleaser v2.14.0, then builds Linux amd64/arm64 containers. Windows ARM (32-bit)
 is excluded because Go no longer supports that target. Beta tags never update

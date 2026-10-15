@@ -71,7 +71,7 @@ release:
   # Publishing this fork must not promote a beta over the existing stable release.
   make_latest: false
   header: |
-    Podsync {{ .Version }} beta: configurable episode artwork for this fork.
+    Podsync {{ .Version }} beta: episode artwork and automatic filename compatibility.
 
     ```toml
     [feeds.example.custom]
@@ -84,6 +84,19 @@ release:
     is unchanged. Existing episodes are supported with persistent caching and failure fallback.
     Generated artwork follows episode/media cleanup, with safe orphan reconciliation
     and retirement of older cache versions after replacement RSS is published.
+
+    This release preserves leading/trailing hyphens and underscores in default ID
+    filenames. Automatic compatibility recognizes the current filename template,
+    original IDs, and beta.3 trimmed IDs. Local storage adds atomic hard links,
+    retaining old URLs without copying video; S3 and unsupported hard links reuse
+    existing media URLs. Ownership checks prevent ambiguous aliases and template
+    collisions from overwriting or serving another episode's media. Cleanup handles
+    all recognized paths while protecting retained episodes. GUIDs remain unchanged.
+    RSS resolves media names before filling missing display dates.
+
+    Automatic migration does not reconstruct arbitrary historical custom templates,
+    old titles/dates or previous extensions. See README for supported cases; no
+    manual migration command is needed.
 
     Extract the archive for your OS and CPU, then run `podsync --config config.toml`.
     The CLI needs ffmpeg and yt-dlp (set downloader.custom_binary if using that name).

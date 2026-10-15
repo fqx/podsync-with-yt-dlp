@@ -12,7 +12,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/mxpv/podsync/pkg/feed"
 	"github.com/mxpv/podsync/pkg/fs"
 	"github.com/mxpv/podsync/pkg/model"
 )
@@ -81,12 +80,12 @@ func (u *Manager) PruneArtwork(ctx context.Context) error {
 			if episode.Status != model.EpisodeDownloaded {
 				continue
 			}
-			_, err := u.fs.Size(ctx, feedID+"/"+feed.EpisodeName(cfg, episode))
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
+			exists, err := u.hasMedia(ctx, cfg, episode)
 			if err != nil {
 				return err
+			}
+			if !exists {
+				continue
 			}
 			for _, version := range artworkVersions {
 				name := strings.Replace(episodeArtworkPath(feedID, episode.ID), "/"+artworkVersion+"/", "/"+version+"/", 1)

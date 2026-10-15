@@ -219,7 +219,7 @@ that every view will display the episode image.
 
 ### Beta downloads
 
-The fork's `v2.8.1-beta.3` release provides prebuilt archives for Linux (amd64,
+The fork's `v2.8.1-beta.4` release provides prebuilt archives for Linux (amd64,
 arm64, armv6 and i386), macOS (amd64 and arm64), and Windows (amd64, arm64 and
 386). Select your machine's OS and CPU from the release assets and check the
 archive against `checksums.txt`. Extract it and run `podsync --config config.toml`;
@@ -230,7 +230,7 @@ The versioned container image includes its runtime dependencies and supports
 Linux amd64 and arm64:
 
 ```bash
-docker pull ghcr.io/fqx/podsync-with-yt-dlp:v2.8.1-beta.3
+docker pull ghcr.io/fqx/podsync-with-yt-dlp:v2.8.1-beta.4
 ```
 
 Beta releases are marked prerelease and do not replace the stable GitHub release
@@ -251,21 +251,58 @@ $ make
 $ ./bin/podsync --config config.toml
 ```
 
-### 🗂️ One-time filename migration
+### Episode filenames and automatic compatibility
 
-If you changed `filename_template` and want to migrate already-downloaded files:
+With no `filename_template`, or with `filename_template = "{{id}}"`, safe IDs
+retain leading and trailing `-` and `_`. Custom templates keep their existing
+sanitization and support `{{id}}`, `{{title}}`, `{{pub_date}}`, and `{{feed_id}}`.
 
-```
-$ ./bin/podsync --config config.toml --migrate-filenames
-```
+Podsync automatically checks the current configured filename, the original ID
+filename from older releases, and the trimmed ID filename produced by beta.3.
+This handles both older original-ID files moving to a custom template and beta.3
+trimmed-ID files moving to the repaired default. Safe legacy IDs contain 1–128
+ASCII letters, digits, underscores or hyphens; unsafe raw paths are never tried.
 
-Preview only (no writes):
+For a file with unambiguous ownership, local storage atomically adds the preferred
+filename and other unambiguous known ID aliases as hard links before publishing
+RSS. These names share the same bytes; old ID URLs remain available, repeated updates are safe, and existing content
+is never overwritten. If hard links fail or are unsupported (including S3), RSS
+uses the existing file URL without copying or downloading media. Episode GUIDs
+and source video URLs remain unchanged. No manual filename migration is needed.
+
+Filename ownership is checked across database episodes, including cleaned records
+when identifying ambiguous historical aliases. A trimmed name shared by different
+IDs is not reused. A custom name colliding with another episode's configured name
+or original ID is not reused or written; Podsync prefers an unambiguous original
+ID filename instead. If none of the supported names can identify the episode
+safely, the update fails rather than overwriting media or publishing a guessed URL.
+Missing unambiguous media is downloaded under its preferred safe name.
+`keep_last` removes current template, original-ID and trimmed-ID paths for expired
+episodes while protecting paths claimed by retained/pending episodes. Artwork
+liveness checks these media names, and successful media cleanup removes artwork.
+
+Only the current template and the two known ID conventions can be recognized.
+Arbitrary names from previously changed custom templates, titles or publication
+dates are not reconstructed or scanned for. Format/extension changes are also
+outside automatic filename migration. Keep the old configuration/data backup
+when changing these independently. This handling assumes one Podsync writer.
+
+### 🗂️ Explicit filename migration command
+
+The existing `--migrate-filenames` command is separate from automatic compatibility.
+It handles original-ID legacy files only and copies them to the configured target,
+then deletes the source, so it does not preserve old URLs. It does not recognize
+beta.3 trimmed-name files or provide the automatic ownership checks above. Prefer
+the automatic update path for these supported cases.
+
+Preview the existing command without writes:
 
 ```
 $ ./bin/podsync --config config.toml --migrate-filenames --migrate-filenames-dry-run
 ```
 
-Note: when `storage.type = "s3"`, only dry-run mode is supported currently. Non-dry-run migration requires readable legacy files and should be run against local storage.
+For S3 this explicit command supports dry-run only; automatic existing-name reuse
+still works during ordinary updates.
 
 ### 🐛 How to debug
 

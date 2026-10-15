@@ -126,8 +126,11 @@ in a feed, add `episode_cover_art` to that feed's existing custom section:
 episode_cover_art = "https://example.com/cover.jpg"
 ```
 
-Replace the example URL with your own publicly accessible square JPG or PNG image,
-preferably 1400–3000 pixels on each side. This setting overrides each RSS item's
+Replace the example URL with your own publicly accessible square JPG or PNG image.
+[Apple Podcasts accepts episode artwork submitted via RSS from 1400 × 1400 to
+3000 × 3000 pixels, and prefers the largest size (3000 × 3000)](https://podcasters.apple.com/support/5516-episode-art-template).
+The image must have a solid background without transparency or an alpha channel.
+This setting overrides each RSS item's
 `itunes:image`; omit it or set it to `""` to keep the original source thumbnail.
 The channel artwork remains controlled by `cover_art`.
 

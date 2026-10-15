@@ -153,7 +153,9 @@ vimeo = [ # Multiple keys will be rotated.
   author = "Level1Tech"
   cover_art = "{IMAGE_URL}"
   # Optional image for every episode's RSS itunes:image; omitted/empty keeps source thumbnails.
-  # Use a publicly accessible square JPG/PNG, preferably 1400–3000 pixels per side.
+  # Use a publicly accessible square JPG/PNG without transparency or an alpha channel.
+  # Apple Podcasts accepts 1400×1400–3000×3000 pixels via RSS; 3000×3000 is preferred.
+  # Specs: https://podcasters.apple.com/support/5516-episode-art-template
   # episode_cover_art = "https://example.com/episode-cover.jpg"
   cover_art_quality = "high"
   category = "TV"

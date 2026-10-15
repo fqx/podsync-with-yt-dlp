@@ -1,13 +1,15 @@
-FROM golang:1.25 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25 AS builder
 
 ARG TAG="nightly"
 ARG COMMIT=""
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /build
 
 COPY . .
 
-RUN make build
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH make build
 
 # Download yt-dlp
 RUN wget -O /usr/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp && \

@@ -196,8 +196,14 @@ Cached `.jpg` plus `.ready` completion markers live under
 `artwork/square-blur-dark15-v1/<feed-hash>/<episode-hash>.jpg` in existing storage; RSS uses the
 same hostname base as media. S3 needs external public serving, as for media.
 Failures warn and fall back without failing RSS; original database metadata remains
-unchanged. Cache persists until explicitly removed, even after disabling the mode
-or cleaning episodes. See README for limits, cache invalidation and Apple specs.
+unchanged. Artwork and markers are deleted with `keep_last` media. `PruneArtwork`
+runs on startup and after successful updates, restricting enumeration/deletion to
+known version directories and hashed object names. It checks configured feeds,
+database episodes and media existence, preserves explicit fixed artwork references,
+and retires live legacy versions only after replacement RSS is stored successfully.
+Local enumeration skips symlinks; S3 uses paginated ListObjectsV2 within the configured
+prefix (list permission is needed for orphan reconciliation). Unknown files and
+external URLs are untouched. See README for limits, cache lifecycle and Apple specs.
 
 ### Hooks Configuration
 ```toml
@@ -515,10 +521,13 @@ This project uses golangci-lint with strict formatting rules configured in `.gol
 
 ## Fork beta releases
 
-Tag this fork with `v2.8.1-beta.1` to trigger `.github/workflows/release.yml`.
+Tag this fork with `v2.8.1-beta.2` to trigger `.github/workflows/release.yml`.
 It tests first, publishes the existing supported OS/CPU archive matrix through
 GoReleaser v2.14.0, then builds Linux amd64/arm64 containers. Windows ARM (32-bit)
 is excluded because Go no longer supports that target. Beta tags never update
 the container `latest` tag; GoReleaser uses `prerelease: auto` and
 `make_latest: false`, targeting only `fqx/podsync-with-yt-dlp`.
 The image build receives the exact tag and commit through build arguments.
+
+Docker uses the native build platform and cross-compiles static binaries for the
+requested target OS/CPU, avoiding emulated Go compilation during multiarch releases.

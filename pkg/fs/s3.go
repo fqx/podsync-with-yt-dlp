@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -147,4 +148,33 @@ type s3logger struct{}
 
 func (s s3logger) Log(args ...interface{}) {
 	log.Debug(args...)
+}
+
+// Walk preserves the configured storage prefix and visits every listed page.
+func (s *S3) Walk(ctx context.Context, prefix string, visit func(string) error) error {
+	var visitErr error
+	base := strings.Trim(s.buildKey(""), "/")
+	objectPrefix := strings.TrimSuffix(s.buildKey(prefix), "/") + "/"
+	err := s.api.ListObjectsV2PagesWithContext(ctx, &s3.ListObjectsV2Input{
+		Bucket: &s.bucket, Prefix: &objectPrefix,
+	}, func(page *s3.ListObjectsV2Output, _ bool) bool {
+		for _, object := range page.Contents {
+			key := aws.StringValue(object.Key)
+			if !strings.HasPrefix(key, objectPrefix) {
+				continue
+			}
+			name := key
+			if base != "" {
+				name = strings.TrimPrefix(key, base+"/")
+			}
+			if visitErr = visit(name); visitErr != nil {
+				return false
+			}
+		}
+		return true
+	})
+	if visitErr != nil {
+		return visitErr
+	}
+	return err
 }

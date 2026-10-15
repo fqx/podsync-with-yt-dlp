@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -111,4 +112,42 @@ func (l *Local) Size(_ctx context.Context, name string) (int64, error) {
 	}
 
 	return stat.Size(), nil
+}
+
+// Walk never follows symlinks in or below the requested relative prefix.
+func (l *Local) Walk(ctx context.Context, prefix string, visit func(string) error) error {
+	prefix = strings.TrimSuffix(prefix, "/")
+	if !filepath.IsLocal(prefix) {
+		return fmt.Errorf("invalid storage prefix")
+	}
+	current := l.rootDir
+	for _, part := range strings.Split(filepath.FromSlash(prefix), string(filepath.Separator)) {
+		current = filepath.Join(current, part)
+		info, err := os.Lstat(current)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("refusing symlink storage prefix")
+		}
+	}
+	return filepath.WalkDir(current, func(name string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
+			return nil
+		}
+		relative, err := filepath.Rel(l.rootDir, name)
+		if err != nil {
+			return err
+		}
+		return visit(filepath.ToSlash(relative))
+	})
 }

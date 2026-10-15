@@ -20,7 +20,7 @@ import (
 
 // Hash both identifiers so neither can introduce path components, URL escapes or collisions.
 func episodeArtworkPath(feedID, episodeID string) string {
-	return fmt.Sprintf("artwork/square-blur-dark15-v1/%x/%x.jpg", sha256.Sum256([]byte(feedID)), sha256.Sum256([]byte(episodeID)))
+	return fmt.Sprintf("artwork/"+artworkVersion+"/%x/%x.jpg", sha256.Sum256([]byte(feedID)), sha256.Sum256([]byte(episodeID)))
 }
 
 func (u *Manager) lookupThumbnails(ctx context.Context, ids []string) (map[string][]string, error) {
@@ -95,7 +95,7 @@ func (u *Manager) prepareEpisodeArtwork(ctx context.Context, f *model.Feed, cfg 
 		if err != nil {
 			log.WithError(err).WithField("episode_id", episode.ID).Warn("episode artwork storage failed; keeping source thumbnail")
 			// Do not let an incomplete write be treated as a cached success on the next update.
-			if cleanupErr := u.fs.Delete(ctx, name+".ready"); cleanupErr != nil {
+			if cleanupErr := u.deleteArtworkObjects(ctx, name); cleanupErr != nil {
 				log.WithError(cleanupErr).Debug("could not remove artwork completion marker")
 			}
 			continue

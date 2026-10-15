@@ -182,6 +182,10 @@ func main() {
 		log.WithError(err).Fatal("failed to create updater")
 	}
 
+	if err := manager.PruneArtwork(ctx); err != nil {
+		log.WithError(err).Warn("artwork reconciliation failed; will retry after a feed update")
+	}
+
 	// In Headless mode, do one round of feed updates and quit
 	if opts.Headless {
 		for _, _feed := range cfg.Feeds {

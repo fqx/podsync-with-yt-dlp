@@ -175,8 +175,27 @@ existing file server; with S3, your external public host must also serve these
 objects under that base URL and storage prefix. Successful images have a `.ready`
 completion marker. Subsequent updates reuse them without another metadata or image
 request. To refresh changed source artwork, remove its cached `.jpg` or `.ready`
-object and allow another update. Cached objects remain when the option is disabled
-or episodes are cleaned; remove unused artwork objects manually when appropriate.
+object and allow another update. Current completed caches may be reused while the
+corresponding configured episode and media file still exist, even if automatic
+artwork is temporarily disabled.
+
+Generated images and their completion markers are deleted with media removed by
+`keep_last`. On startup and after successful updates, Podsync reconciles recognized
+cache objects against configured feeds, database episodes and existing media files.
+This also reclaims orphan objects after database episode/feed deletion, feed removal
+from configuration, or interrupted writes. Older cache versions (including the 30%
+background) are removed only after that feed's replacement RSS is successfully
+stored. Explicit fixed episode/channel image URLs are protected, even if they point
+to an older generated image. Unknown files, original thumbnails and external images
+are never deleted. Cleanup failures warn and retry on a later reconciliation.
+
+S3 uses the existing storage prefix and paginated `ListObjectsV2` for orphan
+reconciliation, requiring list access to those objects in addition to existing
+read/write/delete access. Without list access, normal known-episode `keep_last`
+artwork deletion still works; orphan reconciliation reports a warning. No bucket
+permissions are changed by Podsync. The project has no application-level feed-delete
+endpoint; removing a feed from configuration leaves its media under existing
+Podsync behavior, but its unreferenced generated artwork is reclaimed.
 
 Metadata, image, or storage failures log a warning and leave that episode's source
 thumbnail in RSS; they do not fail the feed update. Missing artwork is retried at
@@ -200,7 +219,7 @@ that every view will display the episode image.
 
 ### Beta downloads
 
-The fork's `v2.8.1-beta.1` release provides prebuilt archives for Linux (amd64,
+The fork's `v2.8.1-beta.2` release provides prebuilt archives for Linux (amd64,
 arm64, armv6 and i386), macOS (amd64 and arm64), and Windows (amd64, arm64 and
 386). Select your machine's OS and CPU from the release assets and check the
 archive against `checksums.txt`. Extract it and run `podsync --config config.toml`;
@@ -211,7 +230,7 @@ The versioned container image includes its runtime dependencies and supports
 Linux amd64 and arm64:
 
 ```bash
-docker pull ghcr.io/fqx/podsync-with-yt-dlp:v2.8.1-beta.1
+docker pull ghcr.io/fqx/podsync-with-yt-dlp:v2.8.1-beta.2
 ```
 
 Beta releases are marked prerelease and do not replace the stable GitHub release

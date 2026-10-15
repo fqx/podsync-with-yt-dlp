@@ -145,3 +145,23 @@ func TestLocal_NoListing_Disabled(t *testing.T) {
 	assert.NoError(t, err)
 	file.Close()
 }
+
+func TestLocalWalkPrefixAndSymlinks(t *testing.T) {
+	root := t.TempDir()
+	storage, err := NewLocal(root, false, false)
+	assert.NoError(t, err)
+	for _, name := range []string{"artwork/version/a.jpg", "artwork/version/a.jpg.ready", "other/user.jpg"} {
+		_, err = storage.Create(testCtx, name, bytes.NewBufferString("1"))
+		assert.NoError(t, err)
+	}
+	var names []string
+	err = storage.Walk(testCtx, "artwork/version", func(name string) error { names = append(names, name); return nil })
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{"artwork/version/a.jpg", "artwork/version/a.jpg.ready"}, names)
+	assert.NoError(t, storage.Walk(testCtx, "artwork/missing", func(string) error { t.Fatal("unexpected object"); return nil }))
+	// Windows runners may lack permission to create symlinks; the prefix test above still runs.
+	if err := os.Symlink(filepath.Join(root, "other"), filepath.Join(root, "artwork", "link")); err == nil {
+		assert.Error(t, storage.Walk(testCtx, "artwork/link", func(string) error { t.Fatal("followed symlink"); return nil }))
+	}
+	assert.Error(t, storage.Walk(testCtx, "../outside", func(string) error { return nil }))
+}

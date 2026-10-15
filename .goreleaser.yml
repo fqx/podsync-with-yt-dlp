@@ -82,6 +82,8 @@ release:
     or omit the setting for original thumbnails. Auto mode fits the full thumbnail
     over a Gaussian-blurred background with a 15% black overlay; foreground brightness
     is unchanged. Existing episodes are supported with persistent caching and failure fallback.
+    Generated artwork follows episode/media cleanup, with safe orphan reconciliation
+    and retirement of older cache versions after replacement RSS is published.
 
     Extract the archive for your OS and CPU, then run `podsync --config config.toml`.
     The CLI needs ffmpeg and yt-dlp (set downloader.custom_binary if using that name).

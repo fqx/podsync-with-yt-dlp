@@ -28,3 +28,9 @@ type Config struct {
 	Local LocalConfig `toml:"local"`
 	S3    S3Config    `toml:"s3"`
 }
+
+// Walker optionally enumerates storage-relative object names under a prefix.
+// It is used to reclaim generated artwork that no longer has a database record.
+type Walker interface {
+	Walk(ctx context.Context, prefix string, visit func(name string) error) error
+}

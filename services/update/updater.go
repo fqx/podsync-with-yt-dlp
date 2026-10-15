@@ -89,6 +89,10 @@ func (u *Manager) Update(ctx context.Context, feedConfig *feed.Config) error {
 		return errors.Wrap(err, "xml build failed")
 	}
 
+	if err := u.PruneArtwork(ctx); err != nil {
+		log.WithError(err).Warn("artwork reconciliation failed; will retry on the next update")
+	}
+
 	if err := u.buildOPML(ctx); err != nil {
 		return errors.Wrap(err, "opml build failed")
 	}
@@ -352,6 +356,12 @@ func (u *Manager) buildXML(ctx context.Context, feedConfig *feed.Config) error {
 		return errors.Wrap(err, "failed to upload new XML feed")
 	}
 
+	// The new RSS is stored successfully; its old artwork URLs can now be retired.
+	for _, episode := range f.Episodes {
+		if err := u.deleteEpisodeArtwork(ctx, feedConfig.ID, episode.ID, true); err != nil {
+			log.WithError(err).Warn("old artwork cleanup failed; will retry on the next update")
+		}
+	}
 	return nil
 }
 
@@ -439,6 +449,9 @@ func (u *Manager) cleanup(ctx context.Context, feedConfig *feed.Config) error {
 		}); err != nil {
 			result = multierror.Append(result, errors.Wrapf(err, "failed to set state for cleaned episode: %s", episode.ID))
 			continue
+		}
+		if err := u.deleteEpisodeArtwork(ctx, feedID, episode.ID, false); err != nil {
+			result = multierror.Append(result, err)
 		}
 	}
 

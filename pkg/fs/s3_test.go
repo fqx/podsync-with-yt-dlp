@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -121,4 +122,55 @@ func (m *mockS3API) DeleteObjectWithContext(ctx aws.Context, input *s3.DeleteObj
 		return &s3.DeleteObjectOutput{}, nil
 	}
 	return nil, awserr.New("NotFound", "", nil)
+}
+
+type artworkListAPI struct {
+	s3iface.S3API
+	prefixes []string
+}
+
+func (m *artworkListAPI) ListObjectsV2PagesWithContext(ctx aws.Context, input *s3.ListObjectsV2Input, fn func(*s3.ListObjectsV2Output, bool) bool, _ ...request.Option) error {
+	m.prefixes = append(m.prefixes, aws.StringValue(input.Prefix))
+	if !fn(&s3.ListObjectsV2Output{Contents: []*s3.Object{{Key: aws.String("podsync/artwork/v/a.jpg")}, {Key: aws.String("outside/user.jpg")}}}, false) {
+		return nil
+	}
+	fn(&s3.ListObjectsV2Output{Contents: []*s3.Object{{Key: aws.String("podsync/artwork/v/a.jpg.ready")}}}, true)
+	return nil
+}
+func TestS3ArtworkWalkPagesAndPrefix(t *testing.T) {
+	api := &artworkListAPI{}
+	storage := &S3{api: api, bucket: "test", prefix: "podsync"}
+	var names []string
+	err := storage.Walk(testCtx, "artwork/v", func(name string) error { names = append(names, name); return nil })
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"podsync/artwork/v/"}, api.prefixes)
+	assert.Equal(t, []string{"artwork/v/a.jpg", "artwork/v/a.jpg.ready"}, names)
+	expected := errors.New("callback failure")
+	assert.ErrorIs(t, storage.Walk(testCtx, "artwork/v", func(string) error { return expected }), expected)
+}
+
+func (m *mockS3API) ListObjectsV2PagesWithContext(ctx aws.Context, input *s3.ListObjectsV2Input, fn func(*s3.ListObjectsV2Output, bool) bool, _ ...request.Option) error {
+	var objects []*s3.Object
+	for key := range m.files {
+		if strings.HasPrefix(key, aws.StringValue(input.Prefix)) {
+			objects = append(objects, &s3.Object{Key: aws.String(key)})
+		}
+	}
+	fn(&s3.ListObjectsV2Output{Contents: objects}, true)
+	return nil
+}
+func TestS3WalkAndDeleteGeneratedObjects(t *testing.T) {
+	files := map[string][]byte{"podsync/artwork/version/generated.jpg": {1}, "podsync/artwork/version/generated.jpg.ready": {1}, "podsync/user-cover.jpg": {2}}
+	storage, err := newMockS3(files, "podsync")
+	assert.NoError(t, err)
+	assert.NoError(t, storage.Walk(testCtx, "artwork/version", func(name string) error { return storage.Delete(testCtx, name) }))
+	assert.Equal(t, map[string][]byte{"podsync/user-cover.jpg": {2}}, files)
+}
+
+func TestS3WalkWithoutStoragePrefix(t *testing.T) {
+	storage, err := newMockS3(map[string][]byte{"artwork/v/a.jpg": {1}}, "")
+	assert.NoError(t, err)
+	var names []string
+	assert.NoError(t, storage.Walk(testCtx, "artwork/v", func(name string) error { names = append(names, name); return nil }))
+	assert.Equal(t, []string{"artwork/v/a.jpg"}, names)
 }

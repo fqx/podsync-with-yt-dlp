@@ -13,7 +13,7 @@ jobs:
   publish:
     name: Publish
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     permissions:
       contents: write
@@ -25,6 +25,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Test
+        run: go test ./...
+
+      - name: Make release binaries
+        uses: goreleaser/goreleaser-action@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          version: v2.14.0
+          args: release --clean
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: 🧪 Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -34,6 +53,18 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Choose container tags
+        id: image-tags
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          image_tags="${REGISTRY}/${IMAGE_NAME}:${RELEASE_TAG}"
+          if [[ "$RELEASE_TAG" != *-* ]]; then
+            image_tags="${image_tags},${REGISTRY}/${IMAGE_NAME}:latest"
+          fi
+          echo "tags=$image_tags" >> "$GITHUB_OUTPUT"
 
       - name: 🏗️ Build container and push
         uses: docker/build-push-action@v7
@@ -45,13 +76,7 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest, ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-
-      - name: 🚧️ Make release
-        uses: goreleaser/goreleaser-action@v7
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          version: latest
-          args: release --clean
+          build-args: |
+            TAG=${{ github.ref_name }}
+            COMMIT=${{ github.sha }}
+          tags: ${{ steps.image-tags.outputs.tags }}

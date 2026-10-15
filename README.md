@@ -156,7 +156,7 @@ The full image is resized proportionally to fit a **1400 × 1400 opaque
 canvas**, centered without cropping or stretching, then saved as JPEG. Behind the clear
 foreground, the same source is stretched to fill the square and Gaussian blurred
 using a bounded 280 × 280 working image (effective sigma 40 canvas pixels).
-A 30% black overlay darkens only the background before the clear foreground is
+A 15% black overlay darkens only the background before the clear foreground is
 added; foreground brightness is unchanged. This is a design choice, not an Apple
 requirement. Clamped edges avoid dark blur borders. Landscape images show the blurred background
 above and below; portrait images show it at the sides. Transparent input is
@@ -169,7 +169,7 @@ fully visible in the clear foreground:
 ![Automatic episode artwork with blurred background](docs/img/episode-artwork-example.jpg)
 
 Images are saved through the configured storage under
-`artwork/square-blur-dark30-v1/<feed-hash>/<episode-hash>.jpg`. RSS URLs use the configured
+`artwork/square-blur-dark15-v1/<feed-hash>/<episode-hash>.jpg`. RSS URLs use the configured
 `server.hostname` base, just like media URLs. Local storage is served by Podsync's
 existing file server; with S3, your external public host must also serve these
 objects under that base URL and storage prefix. Successful images have a `.ready`
@@ -197,6 +197,26 @@ GUIDs, source video URLs, and enclosure URLs are unchanged by this setting.
 Podcast clients may cache artwork and take time to show an update. Apple Podcasts
 may use different artwork in different views; this setting does not guarantee
 that every view will display the episode image.
+
+### Beta downloads
+
+The fork's `v2.8.1-beta.1` release provides prebuilt archives for Linux (amd64,
+arm64, armv6 and i386), macOS (amd64 and arm64), and Windows (amd64, arm64 and
+386). Select your machine's OS and CPU from the release assets and check the
+archive against `checksums.txt`. Extract it and run `podsync --config config.toml`;
+you do not need Go. The binary still requires ffmpeg and yt-dlp; when the binary
+is named `yt-dlp`, set `[downloader] custom_binary = "/path/to/yt-dlp"`.
+
+The versioned container image includes its runtime dependencies and supports
+Linux amd64 and arm64:
+
+```bash
+docker pull ghcr.io/fqx/podsync-with-yt-dlp:v2.8.1-beta.1
+```
+
+Beta releases are marked prerelease and do not replace the stable GitHub release
+or the Docker `latest` tag. Release binaries are published before the container
+build; check the Release workflow for container completion if it is still running.
 
 ## 🚀 How to run
 

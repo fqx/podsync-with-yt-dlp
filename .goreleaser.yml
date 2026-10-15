@@ -1,3 +1,5 @@
+version: 2
+
 project_name: "Podsync"
 
 before:
@@ -7,6 +9,12 @@ before:
 builds:
   - main: ./cmd/podsync/
     binary: podsync
+    flags:
+      - -trimpath
+    tags:
+      - netgo
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.arch={{.Arch}}
     env:
       - CGO_ENABLED=0
     goos:
@@ -18,6 +26,9 @@ builds:
       - amd64
       - arm
       - arm64
+    ignore:
+      - goos: windows
+        goarch: arm
 
 archives:
   - id: arc
@@ -28,15 +39,20 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end -}}
+    files:
+      - LICENSE*
+      - README*
+      - config.toml.example
+      - html/**
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 
 checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  name_template: '{{ .Tag }}-next'
+  version_template: '{{ .Tag }}-next'
 
 changelog:
   sort: asc
@@ -48,11 +64,31 @@ changelog:
     - Merge branch
 
 release:
-  # We publish Docker image manually,
-  # include links to the release notes.
-  footer: |
-    # Docker images
+  github:
+    owner: fqx
+    name: podsync-with-yt-dlp
+  prerelease: auto
+  # Publishing this fork must not promote a beta over the existing stable release.
+  make_latest: false
+  header: |
+    Podsync {{ .Version }} beta: configurable episode artwork for this fork.
+
+    ```toml
+    [feeds.example.custom]
+    episode_cover_art = "auto"
     ```
-    docker pull ghcr.io/mxpv/podsync:{{ .Tag }}
-    docker pull ghcr.io/mxpv/podsync:latest
+
+    Use a public image URL for fixed artwork, "auto" for YouTube square artwork,
+    or omit the setting for original thumbnails. Auto mode fits the full thumbnail
+    over a Gaussian-blurred background with a 15% black overlay; foreground brightness
+    is unchanged. Existing episodes are supported with persistent caching and failure fallback.
+
+    Extract the archive for your OS and CPU, then run `podsync --config config.toml`.
+    The CLI needs ffmpeg and yt-dlp (set downloader.custom_binary if using that name).
+    The container includes its runtime dependencies. See README for configuration,
+    image limits and cache behavior. This beta does not update the stable latest image.
+  footer: |
+    ## Docker image (Linux amd64 and arm64)
+    ```
+    docker pull ghcr.io/fqx/podsync-with-yt-dlp:{{ .Tag }}
     ```

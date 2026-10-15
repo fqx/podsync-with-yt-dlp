@@ -90,7 +90,7 @@ func TestTransparentInputBecomesOpaqueJPEG(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "jpeg", format)
 	r, g, b, a := img.At(700, 700).RGBA()
-	assert.InDelta(t, 173*257, r, 1000)
+	assert.InDelta(t, 182*257, r, 1000)
 	assert.Less(t, g, uint32(1000))
 	assert.Less(t, b, uint32(1000))
 	assert.Equal(t, uint32(65535), a)
@@ -189,9 +189,9 @@ func TestSquareBlurredBackgroundHasNoBlackBorder(t *testing.T) {
 	require.NoError(t, err)
 	for _, p := range []image.Point{{X: 0, Y: 0}, {X: 1399, Y: 0}, {X: 0, Y: 1399}, {X: 1399, Y: 1399}} {
 		r, g, b, a := img.At(p.X, p.Y).RGBA()
-		assert.InDelta(t, 140*257, r, 1000)
-		assert.InDelta(t, 70*257, g, 1000)
-		assert.InDelta(t, 35*257, b, 1000)
+		assert.InDelta(t, 170*257, r, 1000)
+		assert.InDelta(t, 85*257, g, 1000)
+		assert.InDelta(t, 43*257, b, 1000)
 		assert.Equal(t, uint32(65535), a)
 	}
 }
@@ -215,9 +215,9 @@ func TestBackgroundDarkeningLeavesForegroundUnchanged(t *testing.T) {
 	for _, p := range []image.Point{{X: 100, Y: 100}, {X: 700, Y: 1300}} {
 		r0, g0, b0, _ := a.At(p.X, p.Y).RGBA()
 		r1, g1, b1, alpha := b.At(p.X, p.Y).RGBA()
-		assert.InDelta(t, float64(r0)*0.7, r1, 1000)
-		assert.InDelta(t, float64(g0)*0.7, g1, 1000)
-		assert.InDelta(t, float64(b0)*0.7, b1, 1000)
+		assert.InDelta(t, float64(r0)*0.85, r1, 1000)
+		assert.InDelta(t, float64(g0)*0.85, g1, 1000)
+		assert.InDelta(t, float64(b0)*0.85, b1, 1000)
 		assert.Equal(t, uint32(65535), alpha)
 	}
 	for _, p := range []image.Point{{X: 100, Y: 400}, {X: 700, Y: 700}, {X: 1300, Y: 1000}} {

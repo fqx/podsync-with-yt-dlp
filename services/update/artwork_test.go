@@ -216,7 +216,7 @@ func TestArtworkFailureFallbackAndRetry(t *testing.T) {
 
 func TestArtworkPathSafety(t *testing.T) {
 	name := episodeArtworkPath("../../feed?#", "../episode.jpg?x=y#z")
-	assert.Regexp(t, `^artwork/square-blur-dark30-v1/[a-f0-9]{64}/[a-f0-9]{64}\.jpg$`, name)
+	assert.Regexp(t, `^artwork/square-blur-dark15-v1/[a-f0-9]{64}/[a-f0-9]{64}\.jpg$`, name)
 	assert.NotEqual(t, name, episodeArtworkPath("../../feed?#", "different"))
 	assert.NotEqual(t, name, episodeArtworkPath("different", "../episode.jpg?x=y#z"))
 }

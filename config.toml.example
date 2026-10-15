@@ -154,7 +154,7 @@ vimeo = [ # Multiple keys will be rotated.
   cover_art = "{IMAGE_URL}"
   # RSS item artwork: a fixed public URL, "auto" for square YouTube artwork, or ""/omitted for source thumbnails.
   # "auto" on non-YouTube feeds keeps source thumbnails; it is never emitted as an image URL.
-  # Auto: 1400×1400 opaque JPEG with Gaussian-blurred source background, darkened by 30%.
+  # Auto: 1400×1400 opaque JPEG with Gaussian-blurred source background, darkened by 15%.
   # Clear foreground: proportional fit, no cropping/stretching or brightness change; cached via existing storage.
   # Failed auto artwork falls back to the original thumbnail and retries at the next update.
   # Use a publicly accessible square JPG/PNG without transparency or an alpha channel.

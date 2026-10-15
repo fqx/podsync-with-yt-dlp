@@ -1,7 +1,7 @@
 FROM golang:1.25 AS builder
 
-ENV TAG="nightly"
-ENV COMMIT=""
+ARG TAG="nightly"
+ARG COMMIT=""
 
 WORKDIR /build
 

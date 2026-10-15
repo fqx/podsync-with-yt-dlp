@@ -190,10 +190,10 @@ of 50 and orders actual URLs by resolution. `pkg/artwork` bounds HTTP requests,
 redirect destinations, bytes and decoded pixels, then proportionally fits the full
 foreground without cropping or stretching over a stretched, Gaussian-blurred
 copy of the source. Blur uses a 280×280 working image with clamped edges to avoid
-black borders. A 30% black overlay shades only the background before the unchanged
+black borders. A 15% black overlay shades only the background before the unchanged
 foreground is composited. Fixed URL mode never runs automatic work.
 Cached `.jpg` plus `.ready` completion markers live under
-`artwork/square-blur-dark30-v1/<feed-hash>/<episode-hash>.jpg` in existing storage; RSS uses the
+`artwork/square-blur-dark15-v1/<feed-hash>/<episode-hash>.jpg` in existing storage; RSS uses the
 same hostname base as media. S3 needs external public serving, as for media.
 Failures warn and fall back without failing RSS; original database metadata remains
 unchanged. Cache persists until explicitly removed, even after disabling the mode
@@ -512,3 +512,13 @@ This project uses golangci-lint with strict formatting rules configured in `.gol
 - youtube-dl wrapper: `pkg/ytdl/ytdl.go`
 - Hooks: `pkg/feed/hooks.go`
 - API key rotation: `pkg/feed/key.go`
+
+## Fork beta releases
+
+Tag this fork with `v2.8.1-beta.1` to trigger `.github/workflows/release.yml`.
+It tests first, publishes the existing supported OS/CPU archive matrix through
+GoReleaser v2.14.0, then builds Linux amd64/arm64 containers. Windows ARM (32-bit)
+is excluded because Go no longer supports that target. Beta tags never update
+the container `latest` tag; GoReleaser uses `prerelease: auto` and
+`make_latest: false`, targeting only `fqx/podsync-with-yt-dlp`.
+The image build receives the exact tag and commit through build arguments.

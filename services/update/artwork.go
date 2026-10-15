@@ -20,7 +20,7 @@ import (
 
 // Hash both identifiers so neither can introduce path components, URL escapes or collisions.
 func episodeArtworkPath(feedID, episodeID string) string {
-	return fmt.Sprintf("artwork/square-blur-dark30-v1/%x/%x.jpg", sha256.Sum256([]byte(feedID)), sha256.Sum256([]byte(episodeID)))
+	return fmt.Sprintf("artwork/square-blur-dark15-v1/%x/%x.jpg", sha256.Sum256([]byte(feedID)), sha256.Sum256([]byte(episodeID)))
 }
 
 func (u *Manager) lookupThumbnails(ctx context.Context, ids []string) (map[string][]string, error) {

@@ -104,7 +104,7 @@ func (g *Generator) fetch(ctx context.Context, source string) ([]byte, error) {
 }
 
 func square(data []byte) ([]byte, error) {
-	return renderSquare(data, 0.3)
+	return renderSquare(data, 0.15)
 }
 
 // renderSquare exposes the background-only shade to package tests and deterministic previews.
@@ -131,7 +131,7 @@ func renderSquare(data []byte, backgroundDarkening float64) ([]byte, error) {
 	draw.Draw(background, background.Bounds(), image.Black, image.Point{}, draw.Src)
 	draw.Draw(background, background.Bounds(), resize(src, 280, 280), image.Point{}, draw.Over)
 	canvas := resize(gaussian(background, 8), Size, Size)
-	// Composite a 30% black overlay on the background before adding the clear foreground.
+	// Composite a 15% black overlay on the background before adding the clear foreground.
 	for i := 0; i < len(canvas.Pix); i += 4 {
 		for c := 0; c < 3; c++ {
 			canvas.Pix[i+c] = uint8(math.Round(float64(canvas.Pix[i+c]) * (1 - backgroundDarkening)))

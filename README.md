@@ -219,7 +219,7 @@ that every view will display the episode image.
 
 ### Beta downloads
 
-The fork's `v2.8.1-beta.2` release provides prebuilt archives for Linux (amd64,
+The fork's `v2.8.1-beta.3` release provides prebuilt archives for Linux (amd64,
 arm64, armv6 and i386), macOS (amd64 and arm64), and Windows (amd64, arm64 and
 386). Select your machine's OS and CPU from the release assets and check the
 archive against `checksums.txt`. Extract it and run `podsync --config config.toml`;
@@ -230,7 +230,7 @@ The versioned container image includes its runtime dependencies and supports
 Linux amd64 and arm64:
 
 ```bash
-docker pull ghcr.io/fqx/podsync-with-yt-dlp:v2.8.1-beta.2
+docker pull ghcr.io/fqx/podsync-with-yt-dlp:v2.8.1-beta.3
 ```
 
 Beta releases are marked prerelease and do not replace the stable GitHub release

@@ -1,0 +1,44 @@
+name: Retire superseded beta releases
+
+on:
+  push:
+    branches:
+      - feat/episode-cover-art
+    paths:
+      - .github/workflows/retire-beta-releases.yml
+
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.repo.owner !== 'fqx' || context.repo.repo !== 'podsync-with-yt-dlp') {
+              throw new Error('This maintenance task is restricted to its owning fork');
+            }
+            const releases = [
+              {tag: 'v2.8.1-beta.1', id: 413376283},
+              {tag: 'v2.8.1-beta.2', id: 413384819}
+            ];
+            for (const expected of releases) {
+              let release;
+              try {
+                release = (await github.rest.repos.getReleaseByTag({
+                  ...context.repo, tag: expected.tag
+                })).data;
+              } catch (error) {
+                if (error.status === 404) continue;
+                throw error;
+              }
+              if (release.id !== expected.id || !release.prerelease) {
+                throw new Error(`Unexpected release state for ${expected.tag}`);
+              }
+              await github.rest.repos.deleteRelease({
+                ...context.repo, release_id: expected.id
+              });
+              core.info(`${expected.tag}: superseded prerelease and assets retired`);
+            }

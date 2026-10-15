@@ -521,7 +521,7 @@ This project uses golangci-lint with strict formatting rules configured in `.gol
 
 ## Fork beta releases
 
-Tag this fork with `v2.8.1-beta.2` to trigger `.github/workflows/release.yml`.
+Tag this fork with `v2.8.1-beta.3` to trigger `.github/workflows/release.yml`.
 It tests first, publishes the existing supported OS/CPU archive matrix through
 GoReleaser v2.14.0, then builds Linux amd64/arm64 containers. Windows ARM (32-bit)
 is excluded because Go no longer supports that target. Beta tags never update
